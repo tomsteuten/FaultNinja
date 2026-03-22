@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaultFinder — Diagnostic Puzzle Game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+  :root {
+    --bg-deep: #0f1114;
+    --bg-panel: #1a1d23;
+    --bg-card: #22262e;
+    --bg-card-hover: #2a2f38;
+    --border: #2e333d;
+    --border-active: #4a5168;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b91a0;
+    --text-dim: #555b6e;
+    --amber: #f0a830;
+    --amber-dim: #916520;
+    --amber-glow: rgba(240, 168, 48, 0.12);
+    --green: #34d399;
+    --green-dim: #1a7a52;
+    --green-glow: rgba(52, 211, 153, 0.10);
+    --red: #f87171;
+    --red-dim: #7f2d2d;
+    --red-glow: rgba(248, 113, 113, 0.10);
+    --blue: #60a5fa;
+    --blue-dim: #2d4a7f;
+    --blue-glow: rgba(96, 165, 250, 0.10);
+    --font-body: 'Instrument Sans', system-ui, sans-serif;
+    --font-mono: 'DM Mono', 'Courier New', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .game-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* ── Header ── */
+  .game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .game-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--amber);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--bg-deep);
+    font-weight: 700;
+    font-family: var(--font-mono);
+  }
+
+  .logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text span { color: var(--amber); }
+
+  .header-back {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .header-back:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    color: var(--text-primary);
+  }
+
+  /* ── Category tabs ── */
+  .category-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--bg-panel);
+    border-radius: 10px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .category-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+  }
+
+  .category-tab::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 7px;
+    background: var(--bg-card);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: -1;
+  }
+
+  .category-tab:active::before {
+    opacity: 1;
+  }
+
+  .category-tab:hover:not(.active) {
+    color: var(--text-primary);
+    background: var(--bg-card);
+  }
+
+  .category-tab.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .category-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    padding: 0 2px;
+    line-height: 1.5;
+  }
+
+  /* ── Scenario cards ── */
+  .scenario-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .scenario-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scenario-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px circle at var(--mouse-x, 0) var(--mouse-y, 0), var(--amber-glow), transparent 80%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .scenario-card:hover {
+    background: var(--bg-card);
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+  }
+
+  .scenario-card:active {
+    transform: translateY(0);
+  }
+
+  .scenario-card-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .scenario-card-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .scenario-card-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-weight: 300;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .scenario-card-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .difficulty-pips {
+    display: flex;
+    gap: 4px;
+  }
+
+  .pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .pip.filled { background: var(--amber); }
+
+  .best-badge {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .best-badge.correct {
+    background: var(--green-glow);
+    color: var(--green);
+    border: 1px solid var(--green-dim);
+  }
+
+  .best-badge.incorrect {
+    background: var(--red-glow);
+    color: var(--red);
+    border: 1px solid var(--red-dim);
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 14px 20px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  .stat-value {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .stat-value.cost { color: var(--amber); }
+
+  /* ── Section labels ── */
+  .section {
+    margin-bottom: 28px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-left: 2px;
+  }
+
+  /* ── Work order ── */
+  .work-order {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .work-order::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--amber);
+    border-radius: 3px 0 0 3px;
+  }
+
+  .work-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .machine-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .machine-subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+
+  .machine-meta {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    font-weight: 300;
+    text-align: right;
+  }
+
+  .symptom-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .symptom-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .symptom-bullet {
+    width: 6px; height: 6px; min-width: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    margin-top: 8px;
+  }
+
+  /* ── Test buttons ── */
+  .tests-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .test-btn {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .test-btn:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+  }
+
+  .test-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .test-btn:disabled { opacity: 0.45; cursor: default; }
+
+  .test-btn.used {
+    border-color: var(--amber-dim);
+    background: var(--amber-glow);
+  }
+
+  .test-cost {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber);
+    white-space: nowrap;
+    font-weight: 500;
+    min-width: 52px;
+    text-align: right;
+  }
+
+  .test-btn.used .test-cost { color: var(--text-dim); }
+
+  /* ── Results ── */
+  .results-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .result-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    animation: resultSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes resultSlide {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card:nth-child(2) { animation-delay: 0.05s; }
+  .result-card:nth-child(3) { animation-delay: 0.1s; }
+  .result-card:nth-child(4) { animation-delay: 0.15s; }
+  .result-card:nth-child(5) { animation-delay: 0.2s; }
+
+  .result-header {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--amber);
+    font-weight: 500;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .result-text {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .result-insight {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  /* ── Diagnosis ── */
+  .diagnosis-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .diagnosis-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .diagnosis-btn {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .diagnosis-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, var(--amber-glow) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .diagnosis-btn:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+  }
+
+  .diagnosis-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .diagnosis-btn:disabled { cursor: default; }
+
+  .diagnosis-btn.selected::after {
+    opacity: 0.8;
+  }
+
+  .diagnosis-radio {
+    width: 18px; height: 18px; min-width: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border-active);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .diagnosis-btn.selected .diagnosis-radio {
+    transform: scale(1.15);
+  }
+
+  .diagnosis-btn.selected .diagnosis-radio { border-color: var(--amber); }
+
+  .diagnosis-btn.selected .diagnosis-radio::after {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+
+  .diagnosis-btn.selected {
+    border-color: var(--amber-dim);
+    background: var(--amber-glow);
+  }
+
+  /* Post-submit diagnosis colouring */
+  .diagnosis-btn.revealed-correct {
+    border-color: var(--green-dim);
+    background: var(--green-glow);
+  }
+
+  .diagnosis-btn.revealed-correct .diagnosis-radio {
+    border-color: var(--green);
+  }
+
+  .diagnosis-btn.revealed-correct .diagnosis-radio::after {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+
+  .diagnosis-btn.revealed-wrong {
+    border-color: var(--red-dim);
+    background: var(--red-glow);
+    opacity: 0.7;
+  }
+
+  .diagnosis-btn.revealed-wrong .diagnosis-radio {
+    border-color: var(--red);
+  }
+
+  .diagnosis-btn.revealed-wrong .diagnosis-radio::after {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+
+  .submit-btn {
+    background: var(--amber);
+    color: var(--bg-deep);
+    border: none;
+    border-radius: 8px;
+    padding: 14px 32px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: -0.01em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 0; height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(240, 168, 48, 0.2);
+  }
+
+  .submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .submit-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── Outcome ── */
+  .outcome-card {
+    border-radius: 12px;
+    padding: 28px;
+    margin-top: 24px;
+    animation: outcomePulse 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  @keyframes outcomePulse {
+    0% { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .outcome-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+  }
+
+  .outcome-card.correct {
+    background: var(--green-glow);
+    border: 1px solid var(--green-dim);
+  }
+
+  .outcome-card.correct::before {
+    background: radial-gradient(600px circle at center, rgba(52, 211, 153, 0.2) 0%, transparent 70%);
+  }
+
+  .outcome-card.incorrect {
+    background: var(--red-glow);
+    border: 1px solid var(--red-dim);
+  }
+
+  .outcome-card.incorrect::before {
+    background: radial-gradient(600px circle at center, rgba(248, 113, 113, 0.2) 0%, transparent 70%);
+  }
+
+  .outcome-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+    animation: titleSlideIn 0.5s ease-out 0.1s both;
+  }
+
+  @keyframes titleSlideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .outcome-card.correct .outcome-title { color: var(--green); }
+  .outcome-card.incorrect .outcome-title { color: var(--red); }
+
+  .outcome-feedback {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+
+  .outcome-explanation {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 8px;
+  }
+
+  .outcome-explanation strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .outcome-stats {
+    display: flex;
+    gap: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .outcome-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    animation: statPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  @keyframes statPop {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .outcome-stat:nth-child(1) { animation-delay: 0.2s; }
+  .outcome-stat:nth-child(2) { animation-delay: 0.25s; }
+  .outcome-stat:nth-child(3) { animation-delay: 0.3s; }
+  .outcome-stat:nth-child(4) { animation-delay: 0.35s; }
+
+  .outcome-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .outcome-stat-value {
+    font-size: 16px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+
+  .outcome-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .btn-secondary {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: buttonShow 0.4s ease-out both;
+  }
+
+  @keyframes buttonShow {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .outcome-buttons .btn-secondary:nth-child(1) { animation-delay: 0.4s; }
+  .outcome-buttons .btn-secondary:nth-child(2) { animation-delay: 0.45s; }
+  .outcome-buttons .btn-primary { animation-delay: 0.5s; }
+
+  .btn-secondary:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.96);
+  }
+
+  .btn-primary {
+    background: var(--amber);
+    color: var(--bg-deep);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(240, 168, 48, 0.2);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.96);
+  }
+
+  /* ── Diagram ── */
+  .game-content {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .diagram-wrapper {
+    flex: 0 0 280px;
+    position: sticky;
+    top: 20px;
+  }
+
+  .diagram-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .diagram-panel svg {
+    max-width: 260px;
+    width: 100%;
+    height: auto;
+    min-height: 260px;
+  }
+
+  .diagram-content {
+    flex: 1;
+    min-width: 0;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .diagram-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .diagram-content::-webkit-scrollbar-track {
+    background: var(--bg-panel);
+  }
+
+  .diagram-content::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .diagram-part {
+    transition: all 0.15s ease;
+  }
+
+  .diagram-part.highlight {
+    filter: drop-shadow(0 0 12px var(--amber)), brightness(1.3);
+  }
+
+  .diagram-part.highlight-glow {
+    animation: partGlow 1s ease-in-out infinite;
+  }
+
+  @keyframes partGlow {
+    0%, 100% { filter: drop-shadow(0 0 6px var(--amber)), brightness(1.2); }
+    50% { filter: drop-shadow(0 0 18px var(--amber)), brightness(1.4); }
+  }
+
+  .diagram-part.highlight-pulse {
+    animation: partPulse 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes partPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 1.0; }
+  }
+
+  .diagram-part.highlight-correct {
+    filter: drop-shadow(0 0 12px var(--green)), brightness(1.2);
+    animation: partCorrect 1.2s ease-out infinite;
+  }
+
+  @keyframes partCorrect {
+    0%, 100% { filter: drop-shadow(0 0 8px var(--green)), brightness(1.2); }
+    50% { filter: drop-shadow(0 0 18px var(--green)), brightness(1.3); }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .game-content {
+      flex-direction: column;
+      gap: 16px;
+    }
+    .diagram-wrapper {
+      flex: 0 0 auto;
+      position: static;
+      max-width: 100%;
+    }
+    .diagram-content {
+      max-height: none;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .game-container { padding: 16px 14px 60px; }
+    .work-order { padding: 18px; }
+    .stats-bar { gap: 12px; padding: 12px 16px; }
+    .scenario-card { padding: 16px; }
+    .scenario-card-meta { font-size: 12px; }
+    .outcome-stats { gap: 16px; }
+    .category-tab { font-size: 13px; padding: 9px 12px; }
+    .diagram-panel { padding: 16px; min-height: 280px; }
+    .diagram-panel svg { max-width: 100%; min-height: 240px; }
+    .game-content {
+      flex-direction: column;
+    }
+  }
+
+  /* ── Screen transitions ── */
+  #screen-menu, #screen-game {
+    animation: screenFadeIn 0.4s ease-out;
+  }
+
+  @keyframes screenFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  #screen-menu.hidden, #screen-game.hidden {
+    animation: screenFadeOut 0.3s ease-out;
+  }
+
+  @keyframes screenFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-4px); }
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="game-container" id="app">
+  <div class="game-header">
+    <div class="game-logo" onclick="goToMenu()">
+      <div class="logo-icon">FF</div>
+      <div class="logo-text">Fault<span>Finder</span></div>
+    </div>
+    <div id="header-right"></div>
+  </div>
+
+  <div id="screen-menu"></div>
+  <div id="screen-game" class="hidden"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// DIAGRAM DEFINITIONS
+// ════════════════════════════════════════
+const DIAGRAMS = {
+  'sc-101': { // Washing Machine
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 320" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="drumGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#3a404f;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#252b36;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <!-- Machine body -->
+      <rect x="20" y="20" width="240" height="200" rx="8" fill="#1a1d23" stroke="#4a5168" stroke-width="2"/>
+      <!-- Drum -->
+      <circle id="drum-101" class="diagram-part" cx="140" cy="100" r="60" fill="url(#drumGrad)" stroke="#555b6e" stroke-width="2"/>
+      <g class="diagram-part" id="drum-holes">
+        <circle cx="120" cy="80" r="3" fill="#0f1114" opacity="0.6"/>
+        <circle cx="140" cy="70" r="3" fill="#0f1114" opacity="0.6"/>
+        <circle cx="160" cy="80" r="3" fill="#0f1114" opacity="0.6"/>
+        <circle cx="125" cy="110" r="3" fill="#0f1114" opacity="0.6"/>
+        <circle cx="155" cy="110" r="3" fill="#0f1114" opacity="0.6"/>
+      </g>
+      <!-- Pump area (bottom) -->
+      <rect id="pump-101" class="diagram-part" x="110" y="170" width="60" height="30" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+      <text x="140" y="190" text-anchor="middle" font-size="11" fill="#8b91a0" font-family="var(--font-mono)">pump</text>
+      <!-- Filter icon -->
+      <circle id="filter-101" class="diagram-part" cx="220" cy="180" r="18" fill="none" stroke="#8b91a0" stroke-width="2"/>
+      <line x1="210" y1="170" x2="230" y2="190" stroke="#8b91a0" stroke-width="1.5"/>
+      <line x1="230" y1="170" x2="210" y2="190" stroke="#8b91a0" stroke-width="1.5"/>
+      <text x="220" y="238" text-anchor="middle" font-size="10" fill="#8b91a0" font-family="var(--font-mono)">filter</text>
+      <!-- Door -->
+      <rect x="60" y="60" width="70" height="70" rx="3" fill="none" stroke="#4a5168" stroke-width="3"/>
+      <circle cx="120" cy="109" r="4" fill="#4a5168"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'pump-101', class: 'highlight-glow' }],
+      't2': [{ id: 'pump-101', class: 'highlight' }],
+      't3': [{ id: 'filter-101', class: 'highlight-pulse' }],
+      't4': [],
+      't5': [{ id: 'pump-101', class: 'highlight-glow' }],
+      't6': [],
+      't7': [{ id: 'filter-101', class: 'highlight-correct' }],
+      't8': []
+    }
+  },
+
+  'sc-102': { // Car Battery - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- System overview -->
+      <rect x="30" y="30" width="220" height="180" rx="6" fill="#1a1d23" stroke="#4a5168" stroke-width="2"/>
+      <!-- Component A (Power source) -->
+      <g id="comp-a-102" class="diagram-part">
+        <rect x="50" y="55" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="87" y="88" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Component B (Distribution) -->
+      <g id="comp-b-102" class="diagram-part">
+        <rect x="155" y="55" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="192" y="88" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Component C (Load) -->
+      <g id="comp-c-102" class="diagram-part">
+        <rect x="102" y="140" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="139" y="173" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connecting paths -->
+      <path d="M 87 110 L 87 140" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 192 110 L 139 140" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-a-102', class: 'highlight' }],
+      't2': [{ id: 'comp-a-102', class: 'highlight-pulse' }, { id: 'comp-b-102', class: 'highlight-pulse' }],
+      't3': [{ id: 'comp-a-102', class: 'highlight-glow' }],
+      't4': [{ id: 'comp-c-102', class: 'highlight-pulse' }],
+      't5': [],
+      't6': [],
+      't7': [{ id: 'comp-a-102', class: 'highlight-correct' }, { id: 'comp-b-102', class: 'highlight-correct' }],
+      't8': []
+    }
+  },
+
+  'sc-103': { // AC Unit - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- Left subsystem -->
+      <rect x="30" y="40" width="100" height="120" rx="4" fill="#1a1d23" stroke="#4a5168" stroke-width="2"/>
+      <g id="comp-a-103" class="diagram-part">
+        <rect x="45" y="60" width="70" height="50" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="80" y="90" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Right subsystem -->
+      <rect x="150" y="40" width="100" height="120" rx="4" fill="#1a1d23" stroke="#4a5168" stroke-width="2"/>
+      <g id="comp-b-103" class="diagram-part">
+        <rect x="165" y="60" width="70" height="50" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="200" y="90" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Bottom controller -->
+      <g id="comp-c-103" class="diagram-part">
+        <rect x="85" y="190" width="110" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="140" y="220" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connection lines -->
+      <path d="M 80 110 L 80 190" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 200 110 L 200 190" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-b-103', class: 'highlight' }],
+      't2': [{ id: 'comp-a-103', class: 'highlight-glow' }],
+      't3': [{ id: 'comp-a-103', class: 'highlight' }],
+      't4': [{ id: 'comp-a-103', class: 'highlight-pulse' }],
+      't5': [],
+      't6': [{ id: 'comp-a-103', class: 'highlight-pulse' }],
+      't7': [],
+      't8': [{ id: 'comp-c-103', class: 'highlight-pulse' }]
+    }
+  },
+
+  'sc-104': { // WiFi Network - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg">
+      <!-- Component A (Source) -->
+      <g id="comp-a-104" class="diagram-part">
+        <rect x="40" y="50" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="77" y="83" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Component B (Medium) -->
+      <g id="comp-b-104" class="diagram-part">
+        <rect x="165" y="50" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="202" y="83" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Component C (End device) -->
+      <g id="comp-c-104" class="diagram-part">
+        <rect x="102" y="140" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="139" y="173" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connection paths -->
+      <path d="M 77 105 L 77 140" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 202 105 L 139 140" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 115 105 L 155 105" stroke="#4a5168" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.4"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-c-104', class: 'highlight' }],
+      't2': [{ id: 'comp-a-104', class: 'highlight' }],
+      't3': [{ id: 'comp-c-104', class: 'highlight-pulse' }, { id: 'comp-b-104', class: 'highlight-glow' }],
+      't4': [{ id: 'comp-b-104', class: 'highlight-pulse' }],
+      't5': [],
+      't6': [{ id: 'comp-a-104', class: 'highlight-pulse'}],
+      't7': [{ id: 'comp-b-104', class: 'highlight-correct' }, { id: 'comp-c-104', class: 'highlight-pulse' }],
+      't8': []
+    }
+  },
+
+  'sc-105': { // Electric Oven - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- Chamber body -->
+      <rect x="30" y="35" width="220" height="130" rx="6" fill="#1a1d23" stroke="#4a5168" stroke-width="2"/>
+      <!-- Component A (Upper) -->
+      <g id="comp-a-105" class="diagram-part">
+        <rect x="50" y="55" width="75" height="50" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="87" y="85" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Component B (Lower) -->
+      <g id="comp-b-105" class="diagram-part">
+        <rect x="155" y="55" width="75" height="50" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="192" y="85" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Component C (Control) -->
+      <g id="comp-c-105" class="diagram-part">
+        <rect x="102" y="125" width="75" height="50" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="139" y="155" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connection lines -->
+      <path d="M 87 105 L 87 125" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 192 105 L 139 125" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-b-105', class: 'highlight' }],
+      't2': [{ id: 'comp-a-105', class: 'highlight-pulse' }],
+      't3': [{ id: 'comp-b-105', class: 'highlight-glow' }],
+      't4': [],
+      't5': [],
+      't6': [],
+      't7': [{ id: 'comp-b-105', class: 'highlight-correct' }],
+      't8': []
+    }
+  },
+
+  'sc-001': { // Espresso Machine - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- Component A (Input) -->
+      <g id="comp-a-001" class="diagram-part">
+        <rect x="50" y="40" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="87" y="73" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Component B (Processing) -->
+      <g id="comp-b-001" class="diagram-part">
+        <rect x="155" y="40" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="192" y="73" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Component C (Delivery) -->
+      <g id="comp-c-001" class="diagram-part">
+        <rect x="102" y="130" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="139" y="163" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connection lines -->
+      <path d="M 87 95 L 87 130" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 192 95 L 139 130" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-b-001', class: 'highlight' }],
+      't2': [{ id: 'comp-a-001', class: 'highlight' }],
+      't3': [{ id: 'comp-b-001', class: 'highlight-glow' }],
+      't4': [{ id: 'comp-b-001', class: 'highlight-pulse' }],
+      't5': [],
+      't6': [],
+      't7': [{ id: 'comp-b-001', class: 'highlight-correct' }, { id: 'comp-c-001', class: 'highlight-correct' }],
+      't8': []
+    }
+  },
+
+  'sc-003': { // Heated Display - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- Component A (Supply) -->
+      <g id="comp-a-003" class="diagram-part">
+        <rect x="50" y="40" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="87" y="73" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Component B (Transfer) -->
+      <g id="comp-b-003" class="diagram-part">
+        <rect x="155" y="40" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="192" y="73" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Component C (Monitor) -->
+      <g id="comp-c-003" class="diagram-part">
+        <rect x="102" y="130" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="139" y="163" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connection lines -->
+      <path d="M 87 95 L 87 130" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 192 95 L 139 130" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-a-003', class: 'highlight' }],
+      't2': [{ id: 'comp-c-003', class: 'highlight-glow' }],
+      't3': [{ id: 'comp-c-003', class: 'highlight-pulse' }],
+      't4': [{ id: 'comp-c-003', class: 'highlight' }],
+      't5': [{ id: 'comp-a-003', class: 'highlight-pulse' }],
+      't6': [],
+      't7': [],
+      't8': [{ id: 'comp-c-003', class: 'highlight-pulse' }]
+    }
+  },
+
+  'sc-005': { // Espresso Machine (Advanced) - Abstract
+    svg: `<svg preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- Component A (Mechanical) -->
+      <g id="comp-a-005" class="diagram-part">
+        <rect x="50" y="40" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="87" y="73" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">A</text>
+      </g>
+      <!-- Component B (Electrical) -->
+      <g id="comp-b-005" class="diagram-part">
+        <rect x="155" y="40" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="192" y="73" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">B</text>
+      </g>
+      <!-- Component C (Logic) -->
+      <g id="comp-c-005" class="diagram-part">
+        <rect x="102" y="130" width="75" height="55" rx="3" fill="#2a2f38" stroke="#8b91a0" stroke-width="2"/>
+        <text x="139" y="163" text-anchor="middle" font-size="13" font-weight="600" fill="#f0a830" font-family="var(--font-mono)">C</text>
+      </g>
+      <!-- Connection lines -->
+      <path d="M 87 95 L 87 130" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+      <path d="M 192 95 L 139 130" stroke="#4a5168" stroke-width="1.5" opacity="0.5"/>
+    </svg>`,
+    testHighlights: {
+      't1': [{ id: 'comp-b-005', class: 'highlight' }],
+      't2': [{ id: 'comp-a-005', class: 'highlight-glow' }],
+      't3': [{ id: 'comp-a-005', class: 'highlight-pulse' }],
+      't4': [{ id: 'comp-b-005', class: 'highlight-pulse' }],
+      't5': [{ id: 'comp-c-005', class: 'highlight-glow' }],
+      't6': [{ id: 'comp-c-005', class: 'highlight-pulse' }],
+      't7': [{ id: 'comp-c-005', class: 'highlight-correct' }, { id: 'comp-b-005', class: 'highlight-pulse' }],
+      't8': []
+    }
+  }
+};
+
+// ════════════════════════════════════════
+// SCENARIO DATA
+// ════════════════════════════════════════
+const SCENARIOS = {
+  everyday: [
+    {
+      id:"sc-101",title:"The Washing Machine That Held Its Breath",difficulty:2,
+      machine:{type:"Front-Loading Washing Machine",model:"Generic front-loader",age:"5 years",cup_count:"N/A",location:"Suburban home laundry"},
+      reported_symptoms:["Wash cycle runs normally but the machine won't drain at the end","Clothes come out soaking wet","The spin cycle never starts — machine just sits with water in the drum","No error codes on display — it acts like it thinks it finished normally","Started happening a week ago, getting worse each wash"],
+      tests:[
+        {id:"t1",name:"Listen at the front of the machine during drain phase",cost:1,result:"You can hear a humming sound from the bottom-front of the machine — the drain pump motor is running. But there's no rushing water sound like you'd normally hear. The motor sounds like it's straining slightly.",reveals:"The pump motor is powered and spinning, but water isn't moving. Something is blocking the flow between the drum and the pump."},
+        {id:"t2",name:"Check the drain hose at the back of the machine",cost:1,result:"The drain hose runs from the back of the machine up to the standpipe in the wall. It's not kinked, not crushed, and is properly looped up. The connection to the wall pipe is clear.",reveals:"The path from the pump to the wall drain is clear. The blockage must be between the drum and the pump — inside the machine."},
+        {id:"t3",name:"Open the pump filter access panel (bottom-front of machine)",cost:2,result:"Behind a small door at the bottom-front is a round screw-cap. When you slowly unscrew it, water gushes out. You pull the filter out — it's a cylindrical mesh trap, packed solid with lint, two hair clips, a coin, and a thick mat of fibres. The mesh is almost completely blocked.",reveals:"Root cause found. This filter catches debris before it reaches the pump impeller. When it's blocked, water can't flow from the drum to the pump, even though the pump is running."},
+        {id:"t4",name:"Test the door lock mechanism",cost:2,result:"The door locks with an audible click at the start of the cycle and unlocks at the end. The door seal is intact. The interlock is working correctly.",reveals:"Red herring. The door lock works fine. Some machines won't spin if the door lock is faulty, but this one is locking and unlocking normally."},
+        {id:"t5",name:"Run a short drain-only cycle and watch for error codes",cost:1,result:"You start a drain-only cycle. The pump runs for about 3 minutes, then the machine displays 'End' as if it completed. No error code. The drum still has water in it.",reveals:"The machine is timing out on the drain but treating it as complete rather than flagging an error. This is normal for this model — it doesn't distinguish between 'drained successfully' and 'gave up trying'."},
+        {id:"t6",name:"Check the pressure switch hose (water level sensor)",cost:2,result:"The pressure switch is connected to the drum by a thin rubber tube. This tube is clear and not blocked. When you blow gently into the disconnected end, you hear the switch click. It's working.",reveals:"Red herring. The water level sensor is functioning correctly. It knows there's water in the drum, which is why the spin cycle won't engage."},
+        {id:"t7",name:"Clean the filter and run a test drain cycle",cost:1,result:"After clearing all the debris and screwing the filter back in, you run a drain cycle. Water rushes through the pump and down the drain hose. The drum empties in under a minute. The spin cycle then engages normally.",reveals:"Fix confirmed. The blocked filter was the sole cause."},
+        {id:"t8",name:"Inspect the drive belt for the drum motor",cost:2,result:"The rubber belt connecting the motor to the drum is intact, properly tensioned, and shows no cracking or slipping. The drum spins freely by hand.",reveals:"Red herring. The belt drives the drum spin, not the drain pump. Even with a broken belt, the machine would still drain."}
+      ],
+      optimal_path:["t1","t2","t3","t7"],optimal_cost:5,
+      fault_explanation:"The drain pump filter was packed with lint, coins, and hair clips, blocking water flow from the drum to the pump. The pump motor was running fine — it just had no water to move. The spin cycle didn't engage because the machine correctly detected the drum was still full of water, which is a safety interlock.",
+      diagnoses:[
+        {id:"d1",text:"Drain pump motor has failed",correct:false,feedback:"You could hear the pump motor running — it was humming during the drain phase. The motor has power and it's spinning. The problem is that water can't reach it through the blocked filter."},
+        {id:"d2",text:"Blocked drain pump filter",correct:true,feedback:"Correct. The filter was packed with lint, coins, and hair clips, blocking water flow from the drum to the pump. The pump motor was running fine — it just had no water to move. Once cleared, everything works. This is the single most common washing machine 'won't drain' fault."},
+        {id:"d3",text:"Kinked or blocked drain hose",correct:false,feedback:"The drain hose checked out fine — not kinked, not crushed, properly routed. The blockage was inside the machine at the pump filter."},
+        {id:"d4",text:"Faulty door lock preventing spin cycle",correct:false,feedback:"The door lock works correctly. The spin cycle isn't engaging because the machine correctly detects a full drum of water — it's a safety feature, not a lock problem."},
+        {id:"d5",text:"Control board not sending spin signal",correct:false,feedback:"The control board is working as designed. It won't command a spin while the drum is full of water. Fix the drain and the spin engages automatically."}
+      ]
+    },
+    {
+      id:"sc-102",title:"The Car That Hates Mornings",difficulty:3,
+      machine:{type:"Passenger Car (Petrol)",model:"Generic 4-cyl sedan",age:"8 years",cup_count:"N/A",location:"Driveway, suburban home"},
+      reported_symptoms:["Car won't start on cold mornings — starter motor turns slowly, then stops","On warmer days or in the afternoon, it starts fine","Headlights seem bright enough when you switch them on","Brand new battery was installed 3 months ago","Getting worse over the past few weeks"],
+      tests:[
+        {id:"t1",name:"Measure battery voltage with a multimeter (engine off)",cost:1,result:"Battery shows 12.5 volts at rest — this is a healthy, well-charged battery. Anything above 12.4V is considered good.",reveals:"The battery itself is fine. It's holding charge correctly."},
+        {id:"t2",name:"Measure voltage while cranking (someone turns the key while you watch the meter)",cost:2,result:"With the meter on the battery posts, voltage drops to about 10.8V during cranking — acceptable. But when you move the probes to the cable clamps, the reading is only 9.1V. There's a 1.7V difference between the post and the clamp.",reveals:"Critical finding. There's a significant voltage drop at the connection between the battery post and the cable clamp. 1.7V of loss at that point is enormous under load — power is being wasted as heat in the corroded connection."},
+        {id:"t3",name:"Visually inspect the battery terminals",cost:1,result:"Both terminals have a buildup of crusty, greenish-white powder where the cable clamps meet the battery posts. The positive terminal is worse. When you wiggle the clamp, it's slightly loose despite the bolt being tight.",reveals:"Root cause identified. The corrosion creates a poor electrical connection between the clamp and the post."},
+        {id:"t4",name:"Bypass the terminals — jumper power directly from battery post to starter solenoid",cost:3,result:"When you jumper power directly from the battery post to the starter solenoid terminal, the starter cranks the engine strongly and immediately. Starts first try.",reveals:"The starter motor is perfectly healthy. It was being starved of current by the bad terminal connection."},
+        {id:"t5",name:"Check alternator output (engine running)",cost:2,result:"With the engine running, the alternator puts out 14.2V — correct charging voltage. The battery is being charged properly.",reveals:"Red herring. The alternator is fine."},
+        {id:"t6",name:"Remove spark plugs and inspect",cost:3,result:"Spark plugs are a light tan/brown colour — healthy combustion. Electrode gap is within spec. No fouling, no oil deposits.",reveals:"Red herring. The spark plugs are fine. The car isn't failing to start because of ignition — the starter can't crank fast enough."},
+        {id:"t7",name:"Clean terminals — remove clamps, scrub posts and clamps with wire brush, reattach",cost:2,result:"After cleaning all corrosion off (shiny lead visible on posts, bright metal inside clamps), you reattach firmly. The next cold morning, the car starts immediately with strong cranking.",reveals:"Fix confirmed. Clean metal-to-metal contact restored the full current path to the starter."},
+        {id:"t8",name:"Turn on headlights and observe brightness",cost:1,result:"Headlights are bright and steady. No dimming or flickering. Interior lights and radio work normally.",reveals:"This is why terminal corrosion is deceptive. Lights draw maybe 10 amps through a corroded connection and work fine. The starter demands 150-300 amps — at that current, even small resistance causes a massive voltage drop."}
+      ],
+      optimal_path:["t1","t3","t2","t7"],optimal_cost:6,
+      fault_explanation:"Corroded battery terminals created high electrical resistance at the cable-to-post connection. Under the light load of headlights (10 amps), the resistance was negligible. Under the heavy load of a cold-morning starter crank (150-300 amps), the same resistance caused a massive voltage drop, starving the starter. The battery and starter were both fine.",
+      diagnoses:[
+        {id:"d1",text:"Battery is defective despite being new",correct:false,feedback:"The battery tested at 12.5V at rest — healthy and fully charged. The voltage is there; it's just not reaching the starter properly."},
+        {id:"d2",text:"Starter motor is failing — weak on cold starts",correct:false,feedback:"When powered directly from the battery post, the starter cranked strong and fast. The motor itself is healthy — it was being starved of current by the bad connection."},
+        {id:"d3",text:"Corroded battery terminals creating high-resistance connection",correct:true,feedback:"Exactly right. The corrosion created enough resistance to starve the starter under heavy load, while lights and accessories worked fine at low current. This is one of the most common — and most commonly misdiagnosed — 'won't start' faults. The fix is a wire brush and 5 minutes."},
+        {id:"d4",text:"Alternator not charging the battery overnight",correct:false,feedback:"The alternator tested at 14.2V output. And the battery was 12.5V at rest, confirming it's fully charged."},
+        {id:"d5",text:"Ignition switch or wiring fault",correct:false,feedback:"The ignition switch is sending the start signal — you can hear the starter trying to crank. The signal path works; the power path is where the problem is."}
+      ]
+    },
+    {
+      id:"sc-103",title:"The Air Conditioner That Blows Hot",difficulty:3,
+      machine:{type:"Window Air Conditioning Unit",model:"Generic window AC, 2.5kW",age:"6 years",cup_count:"N/A",location:"Apartment bedroom window"},
+      reported_symptoms:["Unit turns on and fan blows, but the air is room temperature — no cooling at all","You can hear the unit running, and it sounds slightly different than it used to","Worked fine last summer, sat unused over winter, now doesn't cool","The 'cool' indicator light is on, thermostat is set low","A brief buzzing/humming sound every few minutes from the unit"],
+      tests:[
+        {id:"t1",name:"Put your hand in front of the indoor vent",cost:1,result:"Air is blowing steadily at normal fan speed. But it's the same temperature as the room — no cooling effect at all. Not even slightly cool.",reveals:"The fan is working. The refrigeration system (compressor, coils, refrigerant) is not operating at all."},
+        {id:"t2",name:"Wait and listen carefully for 5 minutes",cost:1,result:"Fan runs continuously. Every 3-4 minutes, you hear a low buzzing lasting 2-3 seconds, followed by a soft click, then silence from the compressor area. The buzz is the compressor trying to start. The click is it shutting back down.",reveals:"The compressor is attempting to start and failing. The short buzz then click is a motor that can't get up to speed and trips on its thermal protection."},
+        {id:"t3",name:"Feel the compressor housing (outdoor side of the unit)",cost:1,result:"The compressor housing is warm despite not running. Each time it attempts to start, it draws high current and generates heat. The refrigerant lines are both room temperature — one should be hot and one cold if the compressor were running.",reveals:"Confirms the compressor is not pumping refrigerant. It's drawing power (getting warm) but not completing its start cycle."},
+        {id:"t4",name:"Inspect the run capacitor (inside the electrical compartment)",cost:2,result:"The run capacitor is a small cylindrical component. Its top is visibly bulging — it should be flat. The casing looks discoloured. Capacitors store electrical energy; when they fail, internal pressure causes the casing to swell.",reveals:"Root cause identified. The capacitor has physically failed. Its job was to provide the electrical phase shift the compressor motor needs to run."},
+        {id:"t5",name:"Test the capacitor with a multimeter (capacitance mode)",cost:2,result:"The label says 25µF. Your meter reads 3.2µF — it's lost over 85% of its capacitance. A capacitor needs to be within about 10% of its rated value to work.",reveals:"Quantitative confirmation. The capacitor has degraded to the point where it can't provide enough energy for the motor."},
+        {id:"t6",name:"Check if the condenser coils are blocked with dirt",cost:2,result:"The outdoor-facing condenser coils have a light coating of dust, but airflow through them is decent. You can see daylight through the fins.",reveals:"Red herring. Dirty coils reduce efficiency but don't stop the compressor from running entirely."},
+        {id:"t7",name:"Check the thermostat by turning it to the coldest setting",cost:1,result:"Turning to coldest, you hear a click — the thermostat is closing its circuit, telling the compressor to run. Fan speed changes are responsive. The thermostat is working.",reveals:"Red herring. The thermostat is doing its job. The compressor just can't respond."},
+        {id:"t8",name:"Replace the run capacitor with correct rated replacement",cost:2,result:"You install a new 25µF capacitor. After powering on with thermostat set to cool, the compressor starts immediately with a smooth hum — no buzzing, no clicking. Within 5 minutes, cold air blows from the indoor vent.",reveals:"Fix confirmed. The new capacitor allows the compressor motor to start and run properly."}
+      ],
+      optimal_path:["t1","t2","t3","t4","t8"],optimal_cost:7,
+      fault_explanation:"The compressor's run capacitor failed (visibly bulging, measured at 3µF instead of 25µF). Without it, the compressor motor couldn't create the rotating magnetic field it needs. It tried to start, drew excessive current, overheated, and tripped its thermal protection — that's the buzz-click cycle. Capacitors commonly fail after sitting unused over winter. A replacement costs a few dollars.",
+      diagnoses:[
+        {id:"d1",text:"Refrigerant has leaked out over winter",correct:false,feedback:"If refrigerant had leaked, the compressor would still run — it just wouldn't cool effectively. Here, the compressor can't even start."},
+        {id:"d2",text:"Compressor motor has seized or burned out",correct:false,feedback:"The compressor is trying to start — you can hear it buzzing every few minutes. A seized or burned-out motor wouldn't do anything at all."},
+        {id:"d3",text:"Failed compressor run capacitor",correct:true,feedback:"Correct. The run capacitor failed, preventing the compressor from sustaining rotation. It tried to start, drew excessive current, overheated, and tripped its thermal protection — the buzz-click cycle. One of the most common AC failures and one of the cheapest to fix."},
+        {id:"d4",text:"Dirty condenser coils reducing cooling capacity",correct:false,feedback:"The coils had light dust but weren't significantly blocked. More importantly, dirty coils don't prevent the compressor from starting."},
+        {id:"d5",text:"Thermostat not sending the signal to start the compressor",correct:false,feedback:"The thermostat clicked when set to cool, confirming it's closing the circuit. The start signal reaches the compressor — the compressor just can't act on it."}
+      ]
+    },
+    {
+      id:"sc-104",title:"The Laptop That Lost Its Network",difficulty:3,
+      machine:{type:"Home WiFi Network",model:"ISP router/modem combo + laptop",age:"Router: 3yrs / Laptop: 2yrs",cup_count:"N/A",location:"Home lounge room, 4m from router"},
+      reported_symptoms:["Laptop connects to WiFi but says 'No Internet'","All other devices (phones, tablet, smart TV) work fine on the same network","Problem started two days ago — nothing was installed or changed","Laptop was working fine the day before","Restarting the laptop and the router hasn't helped"],
+      tests:[
+        {id:"t1",name:"Check WiFi connection status in laptop settings",cost:1,result:"The laptop is connected to the correct WiFi network with a strong signal. It has an IP address (192.168.1.105) assigned by the router. Status says 'Connected, No Internet'.",reveals:"The WiFi connection is fine. The laptop is talking to the router. The problem is between the router and the wider internet — or in how the laptop is trying to reach the internet."},
+        {id:"t2",name:"Open a command prompt and ping the router (192.168.1.1)",cost:1,result:"Ping 192.168.1.1: Reply, time=2ms. Reply, time=1ms. All four packets returned successfully with very low latency.",reveals:"Local network connection is solid."},
+        {id:"t3",name:"Ping a known external IP address (8.8.8.8 — Google's server)",cost:1,result:"Ping 8.8.8.8: Reply, time=14ms. Reply, time=12ms. All packets returned successfully. The laptop CAN reach the internet.",reveals:"Critical finding. The laptop has a working internet connection at the network level. Data travels laptop → router → ISP → Google and back. The problem is specifically that it can reach IP addresses but not website names."},
+        {id:"t4",name:"Ping a website by name (ping google.com)",cost:1,result:"'Could not find host google.com. Please check the name and try again.' The laptop cannot resolve the name 'google.com' into an IP address.",reveals:"Confirms the problem is DNS resolution — the system that translates names (google.com) into IP addresses (142.250.70.78)."},
+        {id:"t5",name:"Check the laptop's DNS settings in network adapter configuration",cost:1,result:"The DNS server is manually set to 198.51.100.1 — not the router's address and not a well-known public DNS server. Something set a custom DNS address that doesn't exist or isn't responding.",reveals:"Root cause found. The DNS is set to a non-functional address, probably left behind by a VPN or failed update."},
+        {id:"t6",name:"Test a different device on the same network",cost:1,result:"A phone connected to the same WiFi opens websites instantly, streams video, runs a speed test at normal speeds.",reveals:"Confirms the issue is specific to the laptop, not the network or ISP."},
+        {id:"t7",name:"Change DNS settings to automatic (or manually set to 8.8.8.8)",cost:1,result:"After setting DNS to 'Obtain automatically', Google.com loads immediately. Other websites work. The 'No Internet' warning disappears.",reveals:"Fix confirmed. Correcting the DNS settings restores full internet."},
+        {id:"t8",name:"Try a different web browser",cost:1,result:"A second browser shows the same 'can't reach this page' error. The problem isn't browser-specific.",reveals:"Partially useful. Confirms the issue is system-level, not browser-specific."}
+      ],
+      optimal_path:["t1","t3","t4","t5","t7"],optimal_cost:5,
+      fault_explanation:"The laptop's DNS settings were corrupted — manually set to a non-functional server (198.51.100.1), likely left behind by a VPN or failed update. DNS translates website names into IP addresses. The internet connection was fully working at the network level — the laptop could reach any IP address. It just couldn't translate names into addresses.",
+      diagnoses:[
+        {id:"d1",text:"WiFi adapter is failing or has a weak signal",correct:false,feedback:"The WiFi adapter connected with a strong signal and was assigned an IP address. You could ping the router and even external servers. The adapter is fine."},
+        {id:"d2",text:"ISP internet connection is down",correct:false,feedback:"Other devices worked fine, and the laptop could reach external IP addresses. The ISP is up."},
+        {id:"d3",text:"Router is malfunctioning and needs replacement",correct:false,feedback:"The router is working — other devices have full internet, and the laptop communicated through it to external servers."},
+        {id:"d4",text:"Corrupted DNS configuration on the laptop",correct:true,feedback:"Correct. The laptop's DNS was set to a non-functional address, likely left by a VPN or failed update. The internet connection was fully working — the laptop could reach any IP address directly. It just couldn't translate website names into addresses."},
+        {id:"d5",text:"Web browser is corrupted and needs reinstalling",correct:false,feedback:"Both browsers failed identically, and the problem was confirmed at the OS level (ping couldn't resolve names either). The browsers are fine."}
+      ]
+    },
+    {
+      id:"sc-105",title:"The Oven's Cold Shoulder",difficulty:2,
+      machine:{type:"Freestanding Electric Oven/Stove",model:"Generic electric oven",age:"10 years",cup_count:"N/A",location:"Kitchen, family home"},
+      reported_symptoms:["Oven grill (top element) works perfectly — grills and browns food fine","Oven bake (bottom element) does nothing — stays cold on bake mode","Stovetop elements all work normally","The oven light comes on when you open the door","Problem appeared suddenly — was working fine yesterday"],
+      tests:[
+        {id:"t1",name:"Set to bake at 200°C, wait 5 minutes, check bottom element",cost:1,result:"After 5 minutes, the bottom element is completely cold. The oven cavity hasn't warmed up. The display shows it's set correctly and the thermostat is calling for heat.",reveals:"The bake element is not heating. The controls are trying — the element isn't responding."},
+        {id:"t2",name:"Switch to grill mode and check top element",cost:1,result:"The top grill element glows red within a minute and produces strong heat. Switching back to bake — the bottom element does nothing.",reveals:"The oven's power supply, wiring, and controls are functional — they successfully power the grill element. The fault is isolated to the bake element's circuit."},
+        {id:"t3",name:"Visually inspect the bake element (look with a torch)",cost:1,result:"Looking closely, you spot a small area where the metal has blistered and cracked open — a visible gap in the element coil about the width of a grain of rice. The metal around it is discoloured.",reveals:"Root cause visible. The element has burned through. Electricity can't flow through a gap — one break anywhere in the loop stops all current."},
+        {id:"t4",name:"Test the bake element for continuity (disconnect and use multimeter)",cost:2,result:"With the oven unplugged and element disconnected, the multimeter reads 'OL' (open line) across the terminals — no continuity. A working element would show 20-40 ohms.",reveals:"Electrical confirmation. The element is an open circuit. No current can flow."},
+        {id:"t5",name:"Test the selector switch — check if power reaches the element connection point",cost:3,result:"With the oven plugged in and set to bake, the meter reads 240V at the wiring where the bake element plugs in. Full power is present. The switch is sending power correctly.",reveals:"Confirms the switch and wiring are fine. Power reaches the element — the element can't use it."},
+        {id:"t6",name:"Check the thermal safety fuse",cost:2,result:"The thermal fuse tests as a closed circuit (continuity confirmed). It has not tripped.",reveals:"Red herring. If the thermal fuse had blown, typically both elements would be dead."},
+        {id:"t7",name:"Check wiring connections behind the oven",cost:2,result:"All connections are tight with no burn marks, no melted insulation, no loose terminals.",reveals:"Red herring. The wiring is fine."},
+        {id:"t8",name:"Replace the bake element with a new one",cost:2,result:"You install a new element. After setting to bake at 200°C, it begins to glow. Within 10 minutes the oven is at temperature. Bake function fully restored.",reveals:"Fix confirmed. The burned-through element was the only fault."}
+      ],
+      optimal_path:["t1","t2","t3","t4","t8"],optimal_cost:7,
+      fault_explanation:"The bake element burned through — a physical break in the metal coil creating an open circuit. The grill element and stovetop work independently on separate circuits. Elements are consumable parts that eventually fatigue and fail from repeated heating/cooling cycles over years.",
+      diagnoses:[
+        {id:"d1",text:"Faulty oven selector switch — bake position not sending power",correct:false,feedback:"Full voltage (240V) was present at the element connection with the switch set to bake. The switch is doing its job."},
+        {id:"d2",text:"Bake element has burned through (open circuit)",correct:true,feedback:"Correct. The bake element had a visible physical break. This creates an open circuit — no current flows, no heat. The grill, stovetop, and wiring are fine because they're independent circuits. This is the most common electric oven repair."},
+        {id:"d3",text:"Thermal safety fuse has tripped",correct:false,feedback:"The thermal fuse tested fine. If blown, you'd expect all oven heating dead, not just one element."},
+        {id:"d4",text:"Loose wiring connection behind the oven",correct:false,feedback:"All connections were tight. Voltage reached the element connection point correctly."},
+        {id:"d5",text:"Oven thermostat has failed and isn't calling for heat",correct:false,feedback:"The grill mode uses the same thermostat and worked fine. The thermostat is working — it's the bake element that's dead."}
+      ]
+    }
+  ],
+  expert: [
+    {
+      id:"sc-001",title:"The Phantom Bean Hopper",difficulty:2,
+      machine:{type:"Superautomatic Espresso Machine",model:"ProBrew MkII",age:"5 years",cup_count:"458,000",location:"Busy café chain"},
+      reported_symptoms:["Machine displays 'Bean Hopper Empty' error on the decaf (right-hand) grinder","Bean hopper is full — staff have vacuumed and refilled beans","No decaf shots will pour at all","Other two grinders (blonde and dark) are working fine"],
+      tests:[
+        {id:"t1",name:"Visual inspection of bean hopper",cost:1,result:"Hopper is full of beans. Magnet on hopper lid is intact and positioned correctly over sensor.",reveals:"Eliminates hopper and sensor as the fault."},
+        {id:"t2",name:"Listen to grinder during brew attempt",cost:1,result:"You hear a brief hum from the RHS grinder motor, then it stops. No grinding sound. LHS and Centre grinders spin up normally.",reveals:"Motor is receiving power but cannot rotate — mechanical obstruction, not electrical failure."},
+        {id:"t3",name:"Remove RHS grinder and inspect burrs",cost:2,result:"Burrs are caked with damp, compacted coffee grounds. The burr set cannot be rotated by hand. Visible moisture inside the grinder chamber.",reveals:"Root cause — moisture has seized the grinder."},
+        {id:"t4",name:"Check grinder motor capacitor with multimeter",cost:2,result:"Capacitor reads 19.8µF (spec: 20µF). Within acceptable range.",reveals:"Red herring — capacitor is fine."},
+        {id:"t5",name:"Swap RHS hopper sensor with LHS sensor",cost:3,result:"After swapping sensors, the error persists on the RHS side. LHS continues to work fine.",reveals:"Confirms sensor is not the fault."},
+        {id:"t6",name:"Check control board error logs",cost:1,result:"Log shows 'Grinder RHS: motor timeout — no rotation detected' repeated 14 times over 2 days. No other board errors.",reveals:"Board is correctly detecting the stall, not generating a false error."},
+        {id:"t7",name:"Vacuum out the grinder and clean burrs",cost:2,result:"After vacuuming, drying, and cleaning, the grinder rotates freely by hand.",reveals:"Confirms the fix — this is the repair action."},
+        {id:"t8",name:"Inspect piston screens on RHS brew unit",cost:2,result:"RHS piston screen has some old grounds but is not blocked. Piston moves freely.",reveals:"Red herring — pistons are fine, problem is upstream."}
+      ],
+      optimal_path:["t1","t2","t3","t7"],optimal_cost:6,
+      fault_explanation:"Moisture entered the decaf grinder chamber, causing coffee grounds to cake and seize the burrs. The grinder motor stalled on startup, and the machine misinterpreted no rotation as 'no beans present'. The sensor was fine — the grinder physically couldn't spin.",
+      diagnoses:[
+        {id:"d1",text:"Faulty bean hopper sensor",correct:false,feedback:"The sensor is working correctly. The grinder motor is stalling before it can spin — the machine interprets that as no beans."},
+        {id:"d2",text:"Moisture in grinder causing burrs to seize",correct:true,feedback:"Correct! Moisture caused the coffee grounds to cake and lock the burrs. The motor couldn't spin, so the machine reported 'hopper empty' — a misleading error message."},
+        {id:"d3",text:"Failed grinder motor capacitor",correct:false,feedback:"The capacitor is within spec. The motor was receiving power — it just couldn't overcome the mechanical resistance."},
+        {id:"d4",text:"Main control board fault",correct:false,feedback:"The control board was accurately reporting what it saw — no grinder rotation."}
+      ]
+    },
+    {
+      id:"sc-003",title:"The Hot Cabinet Curveball",difficulty:3,
+      machine:{type:"Heated Display Cabinet (Pie Warmer)",model:"FPG IL500",age:"4 years",cup_count:"N/A",location:"Service station convenience store"},
+      reported_symptoms:["Temperature fluctuating 65°C–82°C instead of holding at 75°C setpoint","Takes 3+ hours to reach operating temperature from cold","Orange warning light on the controller display","Food safety system triggering alarms for high temperature"],
+      tests:[
+        {id:"t1",name:"Measure element current draw (both elements)",cost:2,result:"Both elements draw identical current. Resistance at correct values. No partial open circuits.",reveals:"Elements are healthy — not the cause of slow heating."},
+        {id:"t2",name:"Observe contactor operation at setpoint",cost:1,result:"Contactor clicks on and off normally as the controller cycles. Responds correctly to controller output.",reveals:"Contactor is following the controller's instructions faithfully."},
+        {id:"t3",name:"Place independent probe inside and compare readings",cost:2,result:"Your independent probe reads 73°C. Cabinet display reads 74°C. Readings are consistent.",reveals:"Probe and display are accurate. Rules out sensor fault."},
+        {id:"t4",name:"Access controller parameters and compare to factory spec",cost:2,result:"Parameters: SP=75°C, r0=2.0°C (hysteresis), r5=1 (heating mode). All match factory defaults.",reveals:"Parameters haven't drifted — the controller's internal logic is degrading."},
+        {id:"t5",name:"Monitor temperature over 30 minutes with logging",cost:3,result:"Temperature cycles: 70→77→71→76→69→78°C. The swing is wider than the 2°C hysteresis allows, and the cycle period is irregular.",reveals:"Key evidence — PID control is erratic despite correct parameters."},
+        {id:"t6",name:"Inspect door gasket for heat loss",cost:1,result:"Gasket intact. Door closes firmly and seals well.",reveals:"Red herring — door seal is fine."},
+        {id:"t7",name:"Check for draughts or external cooling factors",cost:1,result:"Cabinet positioned away from AC vents and doors. No unusual airflow.",reveals:"Red herring — environmental factors not contributing."},
+        {id:"t8",name:"Check probe type compatibility in documentation",cost:1,result:"Manufacturer documentation shows this model uses a PT-type probe. Common replacement controllers default to NTC probe configuration.",reveals:"Critical knowledge for repair — must match controller to probe type."}
+      ],
+      optimal_path:["t1","t2","t3","t5","t8"],optimal_cost:9,
+      fault_explanation:"The EVCO temperature controller's PID loop was degrading intermittently. All downstream components tested fine. The critical twist: the replacement controller must match the PT-type probe installed. An NTC-configured replacement will read completely wrong temperatures.",
+      diagnoses:[
+        {id:"d1",text:"Failed heating element causing slow recovery",correct:false,feedback:"Both elements tested fine with correct resistance and current draw."},
+        {id:"d2",text:"Temperature probe giving false readings",correct:false,feedback:"Your independent probe confirmed the cabinet's reading was accurate."},
+        {id:"d3",text:"Intermittent controller failure — replace with PT-compatible unit",correct:true,feedback:"Correct. The controller's PID behaviour is erratic despite correct parameters. The replacement must be configured for PT probes, not NTC."},
+        {id:"d4",text:"Contactor failing to switch reliably",correct:false,feedback:"The contactor was clicking normally. It's doing what it's told — the problem is what it's being told to do."},
+        {id:"d5",text:"Controller parameters need recalibration",correct:false,feedback:"Parameters matched factory defaults. The controller's internal PID loop is degrading and needs replacement."}
+      ]
+    },
+    {
+      id:"sc-005",title:"The Software Trap",difficulty:5,
+      machine:{type:"Superautomatic Espresso Machine",model:"ProBrew MkII",age:"4 years",cup_count:"205,000",location:"Café chain — machine in workshop"},
+      reported_symptoms:["Machine completely locked out — won't boot past startup screen","Error: 'Grinder calibration out of range'","Staff originally reported 'bean hopper empty' and dark shots not pouring","A previous tech updated the software before the lockout occurred"],
+      tests:[
+        {id:"t1",name:"Attempt to boot the machine",cost:1,result:"Machine shows manufacturer logo, then 'Grinder Calibration Error — Service Required' and halts. No further interaction possible.",reveals:"Hard lockout at firmware level."},
+        {id:"t2",name:"Check manufacturer release notes for latest software",cost:1,result:"V1.42.7 notes: 'Enhanced grinder calibration validation. Machines with parameters outside tolerance will be locked out during boot to prevent damage.'",reveals:"Critical clue — the software update created this lockout."},
+        {id:"t3",name:"Replace RHS grinder module with known good unit",cost:3,result:"Swapped in a tested grinder. Same lockout error. Will not boot.",reveals:"Error isn't in the grinder hardware — it's stored in firmware."},
+        {id:"t4",name:"Swap in a new control board",cost:3,result:"New control board installed. Lockout persists. Calibration data is on the firmware flash, not the replaceable board.",reveals:"Error is in non-volatile memory, not on replaceable boards."},
+        {id:"t5",name:"Swap the display/GUI board",cost:2,result:"New display board. Same error. Not display-side.",reveals:"Eliminates GUI board."},
+        {id:"t6",name:"Roll firmware back 3 versions",cost:2,result:"Older firmware accepts the grinder calibration values. Machine boots successfully.",reveals:"Confirms the lockout was introduced by new firmware's stricter checks."},
+        {id:"t7",name:"Adjust grinder parameters, then re-update to latest firmware",cost:2,result:"After correcting the RHS grinder calibration factor and updating firmware, machine boots normally. All grinders calibrate. Shots pour correctly.",reveals:"Complete fix."},
+        {id:"t8",name:"Test external water pump",cost:2,result:"Pump runs but occasionally loses prime. Functional but degrading.",reveals:"Unrelated issue — pump needs replacement but isn't causing the lockout."}
+      ],
+      optimal_path:["t1","t2","t3","t6","t7"],optimal_cost:9,
+      fault_explanation:"A software update introduced stricter grinder calibration tolerance checks. The RHS grinder's calibration was slightly outside the new range, so the firmware locked the machine at boot. The error was written to flash memory — replacing the grinder, control board, or display couldn't clear it. The fix: roll back firmware, correct the parameters, then re-update.",
+      diagnoses:[
+        {id:"d1",text:"Faulty RHS grinder module needs replacement",correct:false,feedback:"You replaced the grinder and the error persisted. The hardware is fine — the old calibration data doesn't meet the new software's tolerances."},
+        {id:"d2",text:"Failed control board",correct:false,feedback:"New board didn't help. The lockout is in firmware flash memory."},
+        {id:"d3",text:"Software lockout — roll back firmware, adjust parameters, re-update",correct:true,feedback:"Exactly right. The firmware's stricter checks flagged an out-of-range parameter and wrote a lockout to flash. Hardware swaps can't clear it. This trap catches experienced techs who reach for parts first."},
+        {id:"d4",text:"Display/GUI board fault showing false errors",correct:false,feedback:"GUI board swap didn't help. The error is genuine, from firmware validation."},
+        {id:"d5",text:"Water pump failure preventing boot",correct:false,feedback:"The pump issue is real but unrelated — the machine locked out before reaching the pump test stage."}
+      ]
+    }
+  ]
+};
+
+
+// ════════════════════════════════════════
+// GAME STATE
+// ════════════════════════════════════════
+let state = {
+  screen: 'menu',
+  category: 'everyday',
+  scenario: null,
+  testsRun: [],
+  totalCost: 0,
+  selectedDiagnosis: null,
+  submitted: false,
+  results: []
+};
+
+// Simple best-score persistence
+function getScores() {
+  try { return JSON.parse(localStorage.getItem('ff-scores') || '{}'); } catch { return {}; }
+}
+function saveScore(id, correct, cost) {
+  const scores = getScores();
+  const prev = scores[id];
+  if (!prev || (correct && !prev.correct) || (correct && cost < prev.cost)) {
+    scores[id] = { correct, cost };
+    localStorage.setItem('ff-scores', JSON.stringify(scores));
+  }
+}
+
+
+// ════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════
+function render() {
+  const menuEl = document.getElementById('screen-menu');
+  const gameEl = document.getElementById('screen-game');
+  const headerRight = document.getElementById('header-right');
+
+  if (state.screen === 'menu') {
+    menuEl.classList.remove('hidden');
+    gameEl.classList.add('hidden');
+    headerRight.innerHTML = '';
+    renderMenu(menuEl);
+  } else {
+    menuEl.classList.add('hidden');
+    gameEl.classList.remove('hidden');
+    headerRight.innerHTML = `<button class="header-back" onclick="goToMenu()">All Scenarios</button>`;
+    renderGame(gameEl);
+  }
+}
+
+function renderMenu(el) {
+  const scores = getScores();
+  const cats = {
+    everyday: { label: 'Everyday', desc: 'Household and everyday equipment. No specialist knowledge needed — diagnose by logic and observation.' },
+    expert: { label: 'Expert', desc: 'Commercial coffee machines and food service equipment. Rewards domain knowledge and field experience.' }
+  };
+  const c = cats[state.category];
+  const list = SCENARIOS[state.category];
+
+  el.innerHTML = `
+    <div class="category-tabs">
+      ${Object.entries(cats).map(([key, val]) => `
+        <button class="category-tab ${state.category === key ? 'active' : ''}" onclick="switchCategory('${key}')">${val.label}</button>
+      `).join('')}
+    </div>
+    <div class="category-desc">${c.desc}</div>
+    <div class="scenario-list">
+      ${list.map((s, i) => {
+        const score = scores[s.id];
+        return `
+          <div class="scenario-card" onclick="startScenario('${state.category}', ${i})">
+            <div class="scenario-card-left">
+              <div class="scenario-card-title">${s.title}</div>
+              <div class="scenario-card-meta">${s.machine.type} · ${s.machine.location}</div>
+            </div>
+            <div class="scenario-card-right">
+              ${score ? `<div class="best-badge ${score.correct ? 'correct' : 'incorrect'}">${score.correct ? score.cost + ' units' : 'missed'}</div>` : ''}
+              <div class="difficulty-pips">
+                ${Array.from({length:5},(_,j)=>`<div class="pip ${j<s.difficulty?'filled':''}"></div>`).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderGame(el) {
+  const s = state.scenario;
+  const m = s.machine;
+  const diagram = DIAGRAMS[s.id];
+
+  el.innerHTML = `
+    <div class="stats-bar">
+      <div class="stat">Difficulty <span class="stat-value">${s.difficulty}/5</span></div>
+      <div class="stat">Tests run <span class="stat-value">${state.testsRun.length}/${s.tests.length}</span></div>
+      <div class="stat">Time spent <span class="stat-value cost">${state.totalCost} units</span></div>
+      <div class="stat">Optimal <span class="stat-value">${s.optimal_cost} units</span></div>
+    </div>
+
+    <div class="game-content">
+      ${diagram ? `
+        <div class="diagram-wrapper">
+          <div class="diagram-panel">
+            ${diagram.svg}
+          </div>
+        </div>
+      ` : ''}
+      <div class="diagram-content">
+
+    <div class="section">
+      <div class="section-label">Work Order — Reported Symptoms</div>
+      <div class="work-order">
+        <div class="work-order-header">
+          <div>
+            <div class="machine-name">${s.title}</div>
+            <div class="machine-subtitle">${m.model} · ${m.type}</div>
+          </div>
+          <div class="machine-meta">${m.age} old${m.cup_count !== 'N/A' ? ' · ' + m.cup_count + ' cups' : ''}<br>${m.location}</div>
+        </div>
+        <ul class="symptom-list">
+          ${s.reported_symptoms.map(sym => `
+            <li class="symptom-item"><div class="symptom-bullet"></div><span>${sym}</span></li>
+          `).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Diagnostic Tests</div>
+      <div class="tests-grid">
+        ${s.tests.map(t => {
+          const used = state.testsRun.includes(t.id);
+          return `<button class="test-btn ${used?'used':''}" onclick="runTest('${t.id}')" ${used||state.submitted?'disabled':''}>
+            <span>${used ? '&#10003; ' : ''}${t.name}</span>
+            <span class="test-cost">${used ? 'done' : t.cost + ' units'}</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+
+    ${state.results.length > 0 ? `
+      <div class="section">
+        <div class="section-label">Test Results (${state.results.length})</div>
+        <div class="results-panel">
+          ${state.results.map(r => `
+            <div class="result-card">
+              <div class="result-header">${r.name}</div>
+              <div class="result-text">${r.result}</div>
+              <div class="result-insight">${r.reveals}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="diagnosis-section">
+      <div class="section-label">Submit Your Diagnosis</div>
+      <div class="diagnosis-options">
+        ${s.diagnoses.map(d => {
+          let cls = '';
+          if (state.submitted) {
+            if (d.correct) cls = 'revealed-correct';
+            else if (d.id === state.selectedDiagnosis) cls = 'revealed-wrong';
+          } else if (state.selectedDiagnosis === d.id) {
+            cls = 'selected';
+          }
+          return `<button class="diagnosis-btn ${cls}" onclick="selectDiagnosis('${d.id}')" ${state.submitted?'disabled':''}>
+            <div class="diagnosis-radio"></div>
+            <span>${d.text}</span>
+          </button>`;
+        }).join('')}
+      </div>
+      ${!state.submitted ? `
+        <button class="submit-btn" onclick="submitDiagnosis()" ${!state.selectedDiagnosis?'disabled':''}>Submit Diagnosis</button>
+      ` : renderOutcome()}
+    </div>
+      </div>
+    </div>
+  `;
+
+  // Apply diagram highlights after render
+  if (diagram && state.testsRun.length > 0) {
+    applyDiagramHighlights();
+  }
+}
+
+function renderOutcome() {
+  const s = state.scenario;
+  const chosen = s.diagnoses.find(d => d.id === state.selectedDiagnosis);
+  const isCorrect = chosen.correct;
+  const efficiency = Math.max(0, Math.round((s.optimal_cost / Math.max(state.totalCost, 1)) * 100));
+
+  let rating = '';
+  if (isCorrect) {
+    if (state.totalCost <= s.optimal_cost) rating = 'Master Technician';
+    else if (state.totalCost <= s.optimal_cost * 1.5) rating = 'Senior Technician';
+    else if (state.totalCost <= s.optimal_cost * 2) rating = 'Technician';
+    else rating = 'Apprentice';
+  }
+
+  // Find next scenario
+  const list = SCENARIOS[state.category];
+  const currentIdx = list.findIndex(sc => sc.id === s.id);
+  const nextIdx = currentIdx + 1 < list.length ? currentIdx + 1 : null;
+
+  return `
+    <div class="outcome-card ${isCorrect ? 'correct' : 'incorrect'}">
+      <div class="outcome-title">${isCorrect ? 'Diagnosis Correct' : 'Incorrect Diagnosis'}</div>
+      <div class="outcome-feedback">${chosen.feedback}</div>
+      ${s.fault_explanation ? `<div class="outcome-explanation"><strong>What actually happened:</strong> ${s.fault_explanation}</div>` : ''}
+      ${isCorrect ? `
+        <div class="outcome-stats">
+          <div class="outcome-stat"><div class="outcome-stat-label">Your cost</div><div class="outcome-stat-value">${state.totalCost} units</div></div>
+          <div class="outcome-stat"><div class="outcome-stat-label">Optimal</div><div class="outcome-stat-value">${s.optimal_cost} units</div></div>
+          <div class="outcome-stat"><div class="outcome-stat-label">Efficiency</div><div class="outcome-stat-value">${efficiency}%</div></div>
+          <div class="outcome-stat"><div class="outcome-stat-label">Rating</div><div class="outcome-stat-value">${rating}</div></div>
+        </div>
+      ` : ''}
+      <div class="outcome-buttons">
+        <button class="btn-secondary" onclick="goToMenu()">All Scenarios</button>
+        <button class="btn-secondary" onclick="replayScenario()">Replay</button>
+        ${nextIdx !== null ? `<button class="btn-primary" onclick="startScenario('${state.category}', ${nextIdx})">Next Scenario</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+
+// ════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════
+
+function applyDiagramHighlights() {
+  const s = state.scenario;
+  const diagram = DIAGRAMS[s.id];
+  if (!diagram) return;
+
+  // Clear all highlights first
+  document.querySelectorAll('.diagram-part').forEach(el => {
+    el.style.filter = '';
+    el.style.opacity = '';
+    el.style.animation = '';
+  });
+
+  // Apply highlights for each test run with inline styles for SVG compatibility
+  state.testsRun.forEach(testId => {
+    const highlights = diagram.testHighlights[testId];
+    if (!highlights) return;
+    
+    highlights.forEach(h => {
+      const el = document.getElementById(h.id);
+      if (!el) return;
+      
+      // Apply inline styles for SVG-compatible highlighting
+      if (h.class === 'highlight') {
+        el.style.filter = 'drop-shadow(0 0 12px #f0a830) brightness(1.3)';
+      } else if (h.class === 'highlight-glow') {
+        el.style.animation = 'partGlow 1s ease-in-out infinite';
+        el.style.filter = 'drop-shadow(0 0 6px #f0a830)';
+      } else if (h.class === 'highlight-pulse') {
+        el.style.animation = 'partPulse 1s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      } else if (h.class === 'highlight-correct') {
+        el.style.animation = 'partCorrect 1.2s ease-out infinite';
+        el.style.filter = 'drop-shadow(0 0 12px #34d399) brightness(1.2)';
+      }\n      \n      if (h.opacity !== undefined) {
+        el.style.opacity = h.opacity;
+      }
+    });
+  });
+}
+
+function switchCategory(cat) {
+  state.category = cat;
+  render();
+}
+
+function startScenario(category, index) {
+  state = {
+    screen: 'game',
+    category: category,
+    scenario: SCENARIOS[category][index],
+    testsRun: [],
+    totalCost: 0,
+    selectedDiagnosis: null,
+    submitted: false,
+    results: []
+  };
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function replayScenario() {
+  const cat = state.category;
+  const list = SCENARIOS[cat];
+  const idx = list.findIndex(sc => sc.id === state.scenario.id);
+  startScenario(cat, idx);
+}
+
+function runTest(testId) {
+  if (state.testsRun.includes(testId) || state.submitted) return;
+  const test = state.scenario.tests.find(t => t.id === testId);
+  state.testsRun.push(testId);
+  state.totalCost += test.cost;
+  state.results.unshift(test);
+  render();
+  setTimeout(() => {
+    const r = document.querySelector('.result-card');
+    if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
+function selectDiagnosis(diagId) {
+  if (state.submitted) return;
+  state.selectedDiagnosis = diagId;
+  render();
+}
+
+function submitDiagnosis() {
+  if (!state.selectedDiagnosis) return;
+  state.submitted = true;
+  const chosen = state.scenario.diagnoses.find(d => d.id === state.selectedDiagnosis);
+  saveScore(state.scenario.id, chosen.correct, state.totalCost);
+  render();
+  setTimeout(() => {
+    const o = document.querySelector('.outcome-card');
+    if (o) o.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
+function goToMenu() {
+  state.screen = 'menu';
+  state.scenario = null;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
